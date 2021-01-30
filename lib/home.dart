@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:future_app/post.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -8,55 +9,82 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
+  String _urlBase = "https://jsonplaceholder.typicode.com";
 
-  Future<Map> _recuperarPreco() async{
-      String url = "https://blockchain.info/ticker";
-      http.Response response = await http.get(url);
+  Future<List<Post>> _recuperaPost() async {
+    String url = _urlBase + "/posts";
+    http.Response response = await http.get(url);
+    var dados = json.decode(response.body);
 
-      print(response.body);
 
-      return json.decode(response.body);
+    List<Post> lista = [];
+
+    for(var post in dados){
+      Post p = Post(post["userId"], post["id"], post["title"], post["body"]);
+      lista.add(p);
+    }
+
+    return lista;
   }
 
   @override
   Widget build(BuildContext context) {
+    bool check = false;
 
     return Scaffold(
-      appBar: AppBar(title: Text("Future Test"),),
-      body: FutureBuilder<Map>(
-        future: _recuperarPreco(),
-        builder: (context, snapshot){
-          String resultado;
+        appBar: AppBar(
+          title: Text("Revisão Future"),
+        ),
+        body: FutureBuilder<List<Post>>(
+          future: _recuperaPost(),
+          builder: (context, snapshot) {
 
-          switch(snapshot.connectionState){
-            case ConnectionState.none:
-              resultado = "Não foi possível conectar ao servidor";
-              break;
-            case ConnectionState.waiting:
-              resultado = "Aguardando dados do servidor";
-              break;
-            case ConnectionState.active:
-              resultado = "Conexão está ativa";
-              break;
-            case ConnectionState.done:
+            switch (snapshot.connectionState){
+              case ConnectionState.none:
+                print("Não consegui conectar");
+                break;
+                case ConnectionState.waiting:
+                  print("Aguardando conexão");
+                  return Center(child: CircularProgressIndicator());
+                break;
+                case ConnectionState.active:
+                  print("Conexão ativa");
+                break;
+                case ConnectionState.done:
+                  if(snapshot.hasError){
+                    print("Tem alguma coisa errada");
+                  }
+                  else{
+                    print("Tudo certo");
+                    check = true;
+                  }
+                break;
+            }
+
+            if(check){
+              return ListView.builder(
+                  itemCount: snapshot.data.length,
+                  itemBuilder: (context, index){
+
+                    List<Post> lista = snapshot.data;
+
+                    return ListTile(
+                      leading: Icon(Icons.account_box),
+                      title: Text("${lista[index].title}"),
+                      subtitle: Text("${lista[index].id}"),
+                    );
+
+                  });
+            }else{
+              return Center(child: Text("Algo deu errado"));
+            }
 
 
-              if(!snapshot.hasError){
-                resultado = "${snapshot.data["BRL"]["symbol"].toString()} ${snapshot.data["BRL"]["buy"].toString()}";
-              }
-              else{
-                resultado = "Algo deu errado";
-              }
-              break;
-          }
 
-          return myWidget(resultado);
-        },
-      ),
-    );
-  }
+            return null;
 
-  Widget myWidget(String resultado){
-    return Text(resultado);
+
+          },
+        ));
   }
 }
